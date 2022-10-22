@@ -166,10 +166,15 @@ class Sim:
         if not self.md.trade is None:
             self.trade_price[self.md.trade.side] = self.md.trade.price
 
+
+    def restore_last_trade(self) -> None:
+        self.trade_price['BID'] = -np.inf
+        self.trade_price['ASK'] = np.inf
+
     
     def update_md(self, md:MdUpdate) -> None:        
-        #current md
-        self.md = md
+        #current orderbook
+        self.md = md 
         #update position
         self.update_best_pos()
         #update info about last trade
@@ -193,7 +198,11 @@ class Sim:
 
         
     def tick(self) -> Tuple[ float, List[ Union[OwnTrade, MdUpdate] ] ]:
+        
         while True:
+            
+            self.restore_last_trade()
+            
             strategy_updates_queue_et = self.get_strategy_updates_queue_event_time()
             md_queue_et = self.get_md_queue_event_time()
             actions_queue_et = self.get_actions_queue_event_time()
@@ -201,13 +210,18 @@ class Sim:
             #both queue are empty
             if md_queue_et == np.inf and actions_queue_et == np.inf:
                 break
+
             #strategy queue has minimum event time
-            if min(md_queue_et, actions_queue_et) >= strategy_updates_queue_et:
+            if min(md_queue_et, actions_queue_et) > strategy_updates_queue_et:
                 break
+
             #md queue has minimum event time
             if md_queue_et < actions_queue_et:
                 self.update_md( self.md_queue.popleft() )
+            elif md_queue_et > actions_queue_et:
+                self.update_action( self.actions_queue.popleft() )
             else:
+                self.update_md( self.md_queue.popleft() )
                 self.update_action( self.actions_queue.popleft() )
             
             self.execute_orders()
@@ -258,4 +272,3 @@ class Sim:
                 self.strategy_updates_queue[ executed_order.receive_ts ].append(executed_order)
         for k in executed_orders_id:
             self.ready_to_execute_orders.pop(k)
-        pass

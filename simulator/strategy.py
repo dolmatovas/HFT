@@ -67,7 +67,7 @@ class BestPosStrategy:
                 bid_order.timestamp = receive_ts
                 ask_order.timestamp = receive_ts
                 ongoing_orders[bid_order.order_id] = bid_order
-                ongoing_orders[ask_order.order_id]  = ask_order
+                ongoing_orders[ask_order.order_id] = ask_order
             
             to_cancel = []
             for ID, order in ongoing_orders.items():
