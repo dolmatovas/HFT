@@ -13,8 +13,7 @@ def load_trades(path, nrows=10000) -> List[AnonTrade]:
     receive_ts = trades.receive_ts.values
     exchange_ts = trades.exchange_ts.values 
     trades = [ AnonTrade(*args) for args in trades.values]
-    md = [ MdUpdate(  exchange_ts[i], receive_ts[i], None, trades[i]) for i in range(len(trades)) ]
-    return md
+    return trades
 
 
 def load_books(path, nrows=10000) -> List[OrderbookSnapshotUpdate]:
@@ -39,13 +38,22 @@ def load_books(path, nrows=10000) -> List[OrderbookSnapshotUpdate]:
     bids = [list(zip(lobs[f"bid_price_{i}"],lobs[f"bid_vol_{i}"])) for i in range(10)]
     bids = [ [bids[i][j] for i in range(len(bids))] for j in range(len(bids[0]))]
     
-    book = list( OrderbookSnapshotUpdate(*args) for args in zip(exchange_ts, receive_ts, asks, bids) )
-    md = [ MdUpdate(exchange_ts[i], receive_ts[i], book[i], None) for i in range(len(book)) ]
+    books_dict = list( OrderbookSnapshotUpdate(*args) for args in zip(exchange_ts, receive_ts, asks, bids) )
+    return books
+
+
+def merge_books_and_trades(books : List[OrderbookSnapshotUpdate], trades: List[AnonTrade]) -> List[MdUpdate]:
+
+    trades_dict = { (trade.exchange_ts, trade.receive_ts) : trade for trade in trades }
+    books_dict  = { (book.exchange_ts, book.receive_ts) : book for book in books }
+    
+    ts = sorted(trades_dict.keys() | books_dict.keys())
+
+    md = [MdUpdate(*key, books_dict.get(key, None), trades_dict.get(key, None)) for key in ts]
     return md
 
 
 def load_md_from_file(path: str, nrows=10000) -> List[MdUpdate]:
-    md_trades = load_trades(path, nrows)
-    md_books  = load_books(path, nrows)
-    md = sorted( md_trades + md_books, key=lambda x: x.receive_ts )
-    return md
+    books  = load_books(path, nrows)
+    trades = load_trades(path, nrows)
+    return merge_books_and_trades(books, trades)

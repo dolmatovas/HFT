@@ -24,7 +24,8 @@ def Max(iterable):
 
 @dataclass
 class Order:  # Our own placed order
-    timestamp: int    
+    place_ts : int # ts when we place the order
+    exchange_ts : int # ts when exchange(simulator) get the order    
     order_id: int
     side: str
     size: float
@@ -47,6 +48,7 @@ class AnonTrade:  # Market trade
 
 @dataclass
 class OwnTrade:  # Execution of own placed order
+    place_ts : int # ts when we call place_order method, for debugging
     exchange_ts: int
     receive_ts: int
     trade_id: int
@@ -54,6 +56,7 @@ class OwnTrade:  # Execution of own placed order
     side: str
     size: float
     price: float
+    execute : str # BOOK or TRADE
 
 
 @dataclass
@@ -108,7 +111,6 @@ class Sim:
         #current bid and ask
         self.best_bid = -np.inf
         self.best_ask = np.inf
-
         #current trade 
         self.trade_price = {}
         self.trade_price['BID'] = -np.inf
@@ -120,7 +122,7 @@ class Sim:
     
     
     def get_actions_queue_event_time(self) -> np.float:
-        return np.inf if len(self.actions_queue) == 0 else self.actions_queue[0].timestamp
+        return np.inf if len(self.actions_queue) == 0 else self.actions_queue[0].exchange_ts
     
     
     def get_strategy_updates_queue_event_time(self) -> np.float:
@@ -138,23 +140,6 @@ class Sim:
         self.trade_id += 1
         return res
     
-    
-    def place_order(self, ts:float, size:float, side:str, price:float) -> Order:
-        #добавляем заявку в список всех заявок
-        #ts равен времени, когда заявка придет на биржу
-        ts += self.latency
-        order = Order(ts, self.get_order_id(), side, size, price)
-        self.actions_queue.append(order)
-        return order
-
-    
-    def cancel_order(self, ts:float, id_to_delete:int) -> CancelOrder:
-        #добавляем заявку на удаление
-        ts += self.latency
-        delete_order = CancelOrder(ts, id_to_delete)
-        self.actions_queue.append(delete_order)
-        return delete_order
-
 
     def update_best_pos(self) -> None:
         if not self.md.orderbook is None:
@@ -167,11 +152,11 @@ class Sim:
             self.trade_price[self.md.trade.side] = self.md.trade.price
 
 
-    def restore_last_trade(self) -> None:
+    def delete_last_trade(self) -> None:
         self.trade_price['BID'] = -np.inf
         self.trade_price['ASK'] = np.inf
 
-    
+
     def update_md(self, md:MdUpdate) -> None:        
         #current orderbook
         self.md = md 
@@ -199,32 +184,29 @@ class Sim:
         
     def tick(self) -> Tuple[ float, List[ Union[OwnTrade, MdUpdate] ] ]:
         
-        while True:
-            
-            self.restore_last_trade()
-            
+        while True:     
+            #get event time for all the queues
             strategy_updates_queue_et = self.get_strategy_updates_queue_event_time()
             md_queue_et = self.get_md_queue_event_time()
             actions_queue_et = self.get_actions_queue_event_time()
             
-            #both queue are empty
+            #if both queue are empty
             if md_queue_et == np.inf and actions_queue_et == np.inf:
                 break
 
             #strategy queue has minimum event time
-            if min(md_queue_et, actions_queue_et) > strategy_updates_queue_et:
+            if strategy_updates_queue_et < min(md_queue_et, actions_queue_et):
                 break
 
-            #md queue has minimum event time
-            if md_queue_et < actions_queue_et:
+            if md_queue_et <= actions_queue_et:
                 self.update_md( self.md_queue.popleft() )
-            elif md_queue_et > actions_queue_et:
+            if actions_queue_et <= md_queue_et:
                 self.update_action( self.actions_queue.popleft() )
-            else:
-                self.update_md( self.md_queue.popleft() )
-                self.update_action( self.actions_queue.popleft() )
-            
+
+            #execute orders with current orderbook
             self.execute_orders()
+            #deleting last trade
+            self.delete_last_trade()
         #end of simulation
         if len(self.strategy_updates_queue) == 0:
             return np.inf, None
@@ -235,40 +217,55 @@ class Sim:
 
     def execute_orders(self) -> None:
         executed_orders_id = []
-        
-        
         for order_id, order in self.ready_to_execute_orders.items():
-        
-            executed_price = None
 
-            if order.side == 'BID':
-                #исполняемся об стакан по цене стакана
-                if order.price >= self.best_ask:
+            executed_price, execute = None, None
+
+            if order.side == 'BID' and order.price >= self.best_ask:
                     executed_price = self.best_ask
-                #исполняемся об чужой трейд по своей цене
-                elif order.price >= self.trade_price['ASK']:
-                    executed_price = order.price    
-            elif order.side == 'ASK':
-                #исполняемся об стакан по цене стакана
-                if order.price <= self.best_bid:
+                    execute = 'BOOK'    
+            elif order.side == 'ASK' and order.price <= self.best_bid:
                     executed_price = self.best_bid
-                elif order.price <= self.trade_price['BID']:
+                    execute = 'BOOK'
+            elif order.side == 'BID' and order.price >= self.trade_price['ASK']:
                     executed_price = order.price
-            else:
-                assert False, f"Wrong order side `{order.side}`"
+                    execute = 'TRADE'    
+            elif order.side == 'ASK' and order.price <= self.trade_price['BID']:
+                    executed_price = order.price
+                    execute = 'TRADE'
 
             if not executed_price is None:
-        
                 executed_order = OwnTrade(
-                    self.md.exchange_ts, 
-                    self.md.exchange_ts + self.md_latency,
-                    self.get_trade_id(),
-                    order_id, order.side, order.size, executed_price)
+                    order.place_ts, # when we place the order
+                    self.md.exchange_ts, #exchange ts
+                    self.md.exchange_ts + self.md_latency, #receive ts
+                    self.get_trade_id(), #trade id
+                    order_id, order.side, order.size, executed_price, execute)
         
                 executed_orders_id.append(order_id)
-        
+
+                #added order to strategy update queue
+                #there is no defaultsorteddict so i have to do this
                 if not executed_order.receive_ts in self.strategy_updates_queue:
                     self.strategy_updates_queue[ executed_order.receive_ts ] = []
                 self.strategy_updates_queue[ executed_order.receive_ts ].append(executed_order)
+        
+        #deleting executed orders
         for k in executed_orders_id:
             self.ready_to_execute_orders.pop(k)
+
+
+    def place_order(self, ts:float, size:float, side:str, price:float) -> Order:
+        #добавляем заявку в список всех заявок
+        #ts равен времени, когда заявка придет на биржу
+        order = Order(ts, ts + self.latency, self.get_order_id(), side, size, price)
+        self.actions_queue.append(order)
+        return order
+
+    
+    def cancel_order(self, ts:float, id_to_delete:int) -> CancelOrder:
+        #добавляем заявку на удаление
+        ts += self.latency
+        delete_order = CancelOrder(ts, id_to_delete)
+        self.actions_queue.append(delete_order)
+        return delete_order

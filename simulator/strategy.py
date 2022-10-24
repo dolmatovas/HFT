@@ -35,10 +35,10 @@ class BestPosStrategy:
         best_ask = np.inf
 
         #last order timestamp
-        prev_time = 0
+        prev_time = -np.inf
         #orders that have not been executed/canceled yet
         ongoing_orders = {}
-        
+        all_orders = []
         while True:
             #get update from simulator
             receive_ts, updates = sim.tick()
@@ -68,6 +68,8 @@ class BestPosStrategy:
                 ask_order.timestamp = receive_ts
                 ongoing_orders[bid_order.order_id] = bid_order
                 ongoing_orders[ask_order.order_id] = ask_order
+
+                all_orders += [bid_order, ask_order]
             
             to_cancel = []
             for ID, order in ongoing_orders.items():
@@ -78,4 +80,4 @@ class BestPosStrategy:
                 ongoing_orders.pop(ID)
             
                 
-        return trades_list, md_list, updates_list
+        return trades_list, md_list, updates_list, all_orders
