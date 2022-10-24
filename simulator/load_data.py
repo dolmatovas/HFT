@@ -38,7 +38,7 @@ def load_books(path, nrows=10000) -> List[OrderbookSnapshotUpdate]:
     bids = [list(zip(lobs[f"bid_price_{i}"],lobs[f"bid_vol_{i}"])) for i in range(10)]
     bids = [ [bids[i][j] for i in range(len(bids))] for j in range(len(bids[0]))]
     
-    books_dict = list( OrderbookSnapshotUpdate(*args) for args in zip(exchange_ts, receive_ts, asks, bids) )
+    books = list( OrderbookSnapshotUpdate(*args) for args in zip(exchange_ts, receive_ts, asks, bids) )
     return books
 
 

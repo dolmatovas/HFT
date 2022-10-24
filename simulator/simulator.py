@@ -34,7 +34,7 @@ class Order:  # Our own placed order
         
 @dataclass
 class CancelOrder:
-    timestamp: int
+    exchange_ts: int
     id_to_delete : int
 
 @dataclass
