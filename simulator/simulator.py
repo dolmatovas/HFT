@@ -84,19 +84,18 @@ def update_best_positions(best_bid:float, best_ask:float, md:MdUpdate) -> Tuple[
 
 class Sim:
     def __init__(self, market_data: List[MdUpdate], execution_latency: float, md_latency: float) -> None:
-        """
+        '''
             Args:
+                market_data(List[MdUpdate]): market data
                 execution_latency(float): latency in nanoseconds
                 md_latency(float): latency in nanoseconds
-                nrows: number of rows to read
-        """
-        #nrows -- сколько строк маркет даты скачивать   
+        '''   
+        #transform md to queue
         self.md_queue = deque( market_data )
-        
+        #action queue
         self.actions_queue = deque()
         #SordetDict: receive_ts -> [updates]
         self.strategy_updates_queue = SortedDict()
-        
         #map : order_id -> Order
         self.ready_to_execute_orders = {}
         
@@ -157,7 +156,7 @@ class Sim:
         self.trade_price['ASK'] = np.inf
 
 
-    def update_md(self, md:MdUpdate) -> None:        
+    def update_md(self, md:MdUpdate) -> None:
         #current orderbook
         self.md = md 
         #update position
@@ -172,10 +171,11 @@ class Sim:
         
     
     def update_action(self, action:Union[Order, CancelOrder]) -> None:
+        
         if isinstance(action, Order):
             self.ready_to_execute_orders[action.order_id] = action
-        elif isinstance(action, CancelOrder):
-            #удаляем ордер из списка отстоявшихся стратегий
+        elif isinstance(action, CancelOrder):    
+            #cancel order
             if action.id_to_delete in self.ready_to_execute_orders:
                 self.ready_to_execute_orders.pop(action.id_to_delete)
         else:
@@ -183,7 +183,13 @@ class Sim:
 
         
     def tick(self) -> Tuple[ float, List[ Union[OwnTrade, MdUpdate] ] ]:
-        
+        '''
+            Simulation tick
+
+            Returns:
+                receive_ts(float): receive timestamp in nanoseconds
+                res(List[Union[OwnTrade, MdUpdate]]): simulation result. 
+        '''
         while True:     
             #get event time for all the queues
             strategy_updates_queue_et = self.get_strategy_updates_queue_event_time()
@@ -197,6 +203,7 @@ class Sim:
             #strategy queue has minimum event time
             if strategy_updates_queue_et < min(md_queue_et, actions_queue_et):
                 break
+
 
             if md_queue_et <= actions_queue_et:
                 self.update_md( self.md_queue.popleft() )
@@ -257,7 +264,6 @@ class Sim:
 
     def place_order(self, ts:float, size:float, side:str, price:float) -> Order:
         #добавляем заявку в список всех заявок
-        #ts равен времени, когда заявка придет на биржу
         order = Order(ts, ts + self.latency, self.get_order_id(), side, size, price)
         self.actions_queue.append(order)
         return order

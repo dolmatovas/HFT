@@ -14,7 +14,7 @@ class BestPosStrategy:
         '''
             Args:
                 delay(float): delay between orders in nanoseconds
-                hold_time(Optional[float]): holding time
+                hold_time(Optional[float]): holding time in nanoseconds
         '''
         self.delay = delay
         if hold_time is None:
@@ -23,7 +23,19 @@ class BestPosStrategy:
 
 
     def run(self, sim: "Sim") ->\
-        Tuple[ List[OwnTrade], List[MdUpdate], List[ Union[OwnTrade, MdUpdate] ] ]:
+        Tuple[ List[OwnTrade], List[MdUpdate], List[ Union[OwnTrade, MdUpdate] ], List[Order] ]:
+        '''
+            This function runs simulation
+
+            Args:
+                sim(Sim): simulator
+            Returns:
+                trades_list(List[OwnTrade]): list of our executed trades
+                md_list(List[MdUpdate]): list of market data received by strategy
+                updates_list( List[ Union[OwnTrade, MdUpdate] ] ): list of all updates received by strategy(market data and information about executed trades)
+                all_orders(List[Orted]): list of all placed orders
+        '''
+
         #market data list
         md_list = []
         #executed trades list

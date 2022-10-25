@@ -6,6 +6,16 @@ from simulator import AnonTrade, OrderbookSnapshotUpdate, MdUpdate
 
 
 def load_trades(path, nrows=10000) -> List[AnonTrade]:
+    '''
+        This function downloads trades data
+
+        Args:
+            path(str): path to file
+            nrows(int): number of rows to read
+
+        Return:
+            trades(List[AnonTrade]): list of trades 
+    '''
     trades = pd.read_csv(path + 'trades.csv', nrows=nrows)
     
     #переставляю колонки, чтобы удобнее подавать их в конструктор AnonTrade
@@ -17,6 +27,16 @@ def load_trades(path, nrows=10000) -> List[AnonTrade]:
 
 
 def load_books(path, nrows=10000) -> List[OrderbookSnapshotUpdate]:
+    '''
+        This function downloads orderbook market data
+
+        Args:
+            path(str): path to file
+            nrows(int): number of rows to read
+
+        Return:
+            books(List[OrderbookSnapshotUpdate]): list of orderbooks snapshots 
+    '''
     lobs   = pd.read_csv(path + 'lobs.csv', nrows=nrows)
     
     #rename columns
@@ -43,7 +63,9 @@ def load_books(path, nrows=10000) -> List[OrderbookSnapshotUpdate]:
 
 
 def merge_books_and_trades(books : List[OrderbookSnapshotUpdate], trades: List[AnonTrade]) -> List[MdUpdate]:
-
+    '''
+        This function merges lists of orderbook snapshots and trades 
+    '''
     trades_dict = { (trade.exchange_ts, trade.receive_ts) : trade for trade in trades }
     books_dict  = { (book.exchange_ts, book.receive_ts) : book for book in books }
     
@@ -54,6 +76,9 @@ def merge_books_and_trades(books : List[OrderbookSnapshotUpdate], trades: List[A
 
 
 def load_md_from_file(path: str, nrows=10000) -> List[MdUpdate]:
+    '''
+        This function downloads orderbooks ans trades and merges them
+    '''
     books  = load_books(path, nrows)
     trades = load_trades(path, nrows)
     return merge_books_and_trades(books, trades)
