@@ -9,15 +9,17 @@ def get_pnl(updates_list:List[ Union[MdUpdate, OwnTrade] ]) -> pd.DataFrame:
     '''
         This function calculates PnL from list of updates
     '''
+
+    #current position in btc and usd
     btc_pos, usd_pos = 0.0, 0.0
-    
+    #current portfoilo value
     worth = 0.0
     
     worth_list = []
     btc_pos_list = []
     usd_pos_list = []
     mid_price_list = []
-    
+    #current best_bid and best_ask
     best_bid = -np.inf
     best_ask = np.inf
 
@@ -25,7 +27,8 @@ def get_pnl(updates_list:List[ Union[MdUpdate, OwnTrade] ]) -> pd.DataFrame:
         
         if isinstance(update, MdUpdate):
             best_bid, best_ask = update_best_positions(best_bid, best_ask, update)
-        
+        #mid price
+        #i use it to calculate current portfolio value
         mid_price = 0.5 * ( best_ask + best_bid )
         
         if isinstance(update, OwnTrade):
@@ -37,7 +40,7 @@ def get_pnl(updates_list:List[ Union[MdUpdate, OwnTrade] ]) -> pd.DataFrame:
             elif trade.side == 'ASK':
                 btc_pos -= trade.size
                 usd_pos += trade.price * trade.size
-        
+        #current portfolio value
         worth = usd_pos + mid_price * btc_pos
         worth_list.append(worth)
         btc_pos_list.append(btc_pos)
@@ -47,6 +50,7 @@ def get_pnl(updates_list:List[ Union[MdUpdate, OwnTrade] ]) -> pd.DataFrame:
     exchange_ts = [update.exchange_ts for update in updates_list]
     df = pd.DataFrame({"exchange_ts": exchange_ts, "receive_ts":receive_ts, "total":worth_list, "BTC":btc_pos_list, 
                        "USD":usd_pos_list, "mid_price":mid_price_list})
+    df = df.groupby('receive_ts').agg(lambda x: x.iloc[-1]).reset_index()    
     return df
 
 
@@ -65,9 +69,8 @@ def trade_to_dataframe(trades_list:List[OwnTrade]) -> pd.DataFrame:
         "price" : price,
         "side"  : side
     }
-    
-    df = pd.DataFrame(dct)
-    
+
+    df = pd.DataFrame(dct).groupby('receive_ts').agg(lambda x: x.iloc[-1]).reset_index()    
     return df
 
 
@@ -92,5 +95,5 @@ def md_to_dataframe(md_list: List[MdUpdate]) -> pd.DataFrame:
         "ask_price" : best_asks
     }
     
-    df = pd.DataFrame(dct)    
+    df = pd.DataFrame(dct).groupby('receive_ts').agg(lambda x: x.iloc[-1]).reset_index()    
     return df

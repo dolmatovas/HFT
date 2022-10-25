@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from typing import List, Union, Tuple, Optional
 
-from simulator import Sim, update_best_positions, OwnTrade, MdUpdate
+from simulator import Sim, update_best_positions, OwnTrade, MdUpdate, Order
 
 
 class BestPosStrategy:
@@ -14,7 +14,7 @@ class BestPosStrategy:
         '''
             Args:
                 delay(float): delay between orders in nanoseconds
-                hold_time(Optional[float]): holding time
+                hold_time(Optional[float]): holding time in nanoseconds
         '''
         self.delay = delay
         if hold_time is None:
@@ -23,7 +23,19 @@ class BestPosStrategy:
 
 
     def run(self, sim: "Sim") ->\
-        Tuple[ List[OwnTrade], List[MdUpdate], List[ Union[OwnTrade, MdUpdate] ] ]:
+        Tuple[ List[OwnTrade], List[MdUpdate], List[ Union[OwnTrade, MdUpdate] ], List[Order] ]:
+        '''
+            This function runs simulation
+
+            Args:
+                sim(Sim): simulator
+            Returns:
+                trades_list(List[OwnTrade]): list of our executed trades
+                md_list(List[MdUpdate]): list of market data received by strategy
+                updates_list( List[ Union[OwnTrade, MdUpdate] ] ): list of all updates received by strategy(market data and information about executed trades)
+                all_orders(List[Orted]): list of all placed orders
+        '''
+
         #market data list
         md_list = []
         #executed trades list
@@ -35,10 +47,10 @@ class BestPosStrategy:
         best_ask = np.inf
 
         #last order timestamp
-        prev_time = 0
+        prev_time = -np.inf
         #orders that have not been executed/canceled yet
         ongoing_orders = {}
-        
+        all_orders = []
         while True:
             #get update from simulator
             receive_ts, updates = sim.tick()
@@ -58,7 +70,6 @@ class BestPosStrategy:
                         ongoing_orders.pop(update.order_id)
                 else: 
                     assert False, 'invalid type of update!'
-            
 
             if receive_ts - prev_time >= self.delay:
                 prev_time = receive_ts
@@ -68,7 +79,9 @@ class BestPosStrategy:
                 bid_order.timestamp = receive_ts
                 ask_order.timestamp = receive_ts
                 ongoing_orders[bid_order.order_id] = bid_order
-                ongoing_orders[ask_order.order_id]  = ask_order
+                ongoing_orders[ask_order.order_id] = ask_order
+
+                all_orders += [bid_order, ask_order]
             
             to_cancel = []
             for ID, order in ongoing_orders.items():
@@ -79,4 +92,4 @@ class BestPosStrategy:
                 ongoing_orders.pop(ID)
             
                 
-        return trades_list, md_list, updates_list
+        return trades_list, md_list, updates_list, all_orders
