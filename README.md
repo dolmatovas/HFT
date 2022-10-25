@@ -30,10 +30,10 @@ trades_list, md_list, updates_list, all_orders = strategy.run(sim)
 ```
 Simulation results:
 ```
-    trades_list(List[OwnTrade]): list of our executed trades
-    md_list(List[MdUpdate]): list of market data received by strategy
-    updates_list( List[ Union[OwnTrade, MdUpdate] ] ): list of all updates received by strategy(market data and information about executed trades)
-    all_orders(List[Orted]): list of all placed orders
+trades_list(List[OwnTrade]): list of executed trades
+md_list(List[MdUpdate]): list of market data received by strategy
+updates_list(List[Union[OwnTrade, MdUpdate]]): list of all updates received by strategy(market data and information about executed trades)
+all_orders(List[Orted]): list of all placed orders
 ```
 Use `get_pnl_funciton` to get PnL and info about positions in USD and BTC
 
