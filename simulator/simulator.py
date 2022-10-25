@@ -175,8 +175,8 @@ class Sim:
     def update_action(self, action:Union[Order, CancelOrder]) -> None:
         
         if isinstance(action, Order):
-            self.ready_to_execute_orders[action.order_id] = action
-            #save last order to execute it aggressively
+            #self.ready_to_execute_orders[action.order_id] = action
+            #save last order to try to execute it aggressively
             self.last_order = action
         elif isinstance(action, CancelOrder):    
             #cancel order
