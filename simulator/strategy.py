@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 from typing import List, Union, Tuple, Optional
 
-from simulator import Sim, update_best_positions, OwnTrade, MdUpdate
+from simulator import Sim, update_best_positions, OwnTrade, MdUpdate, Order
 
 
 class BestPosStrategy:

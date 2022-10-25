@@ -114,6 +114,8 @@ class Sim:
         self.trade_price = {}
         self.trade_price['BID'] = -np.inf
         self.trade_price['ASK'] = np.inf
+        #last order
+        self.last_order = None
         
     
     def get_md_queue_event_time(self) -> np.float:
@@ -174,6 +176,8 @@ class Sim:
         
         if isinstance(action, Order):
             self.ready_to_execute_orders[action.order_id] = action
+            #save last order to execute it aggressively
+            self.last_order = action
         elif isinstance(action, CancelOrder):    
             #cancel order
             if action.id_to_delete in self.ready_to_execute_orders:
@@ -210,9 +214,11 @@ class Sim:
             if actions_queue_et <= md_queue_et:
                 self.update_action( self.actions_queue.popleft() )
 
+            #execute last order aggressively
+            self.execute_last_order()
             #execute orders with current orderbook
             self.execute_orders()
-            #deleting last trade
+            #delete last trade
             self.delete_last_trade()
         #end of simulation
         if len(self.strategy_updates_queue) == 0:
@@ -222,21 +228,65 @@ class Sim:
         return key, res
 
 
+    def execute_last_order(self) -> None:
+        '''
+            this function tries to execute self.last order aggressively
+        '''
+        #nothing to execute
+        if self.last_order is None:
+            return
+
+        executed_price, execute = None, None
+        #
+        if self.last_order.side == 'BID' and self.last_order.price >= self.best_ask:
+                executed_price = self.best_ask
+                execute = 'BOOK'
+        #    
+        elif self.last_order.side == 'ASK' and self.last_order.price <= self.best_bid:
+                executed_price = self.best_bid
+                execute = 'BOOK'
+
+        if not executed_price is None:
+            executed_order = OwnTrade(
+                self.last_order.place_ts, # when we place the order
+                self.md.exchange_ts, #exchange ts
+                self.md.exchange_ts + self.md_latency, #receive ts
+                self.get_trade_id(), #trade id
+                self.last_order.order_id, 
+                self.last_order.size, 
+                self.last_order.side, 
+                executed_price, execute)
+            #add order to strategy update queue
+            #there is no defaultsorteddict so I have to do this
+            if not executed_order.receive_ts in self.strategy_updates_queue:
+                self.strategy_updates_queue[ executed_order.receive_ts ] = []
+            self.strategy_updates_queue[ executed_order.receive_ts ].append(executed_order)
+        else:
+            self.ready_to_execute_orders[self.last_order.order_id] = self.last_order
+
+        #delete last order
+        self.last_order = None
+
+
     def execute_orders(self) -> None:
         executed_orders_id = []
         for order_id, order in self.ready_to_execute_orders.items():
 
             executed_price, execute = None, None
 
+            #
             if order.side == 'BID' and order.price >= self.best_ask:
-                    executed_price = self.best_ask
-                    execute = 'BOOK'    
-            elif order.side == 'ASK' and order.price <= self.best_bid:
-                    executed_price = self.best_bid
+                    executed_price = order.price
                     execute = 'BOOK'
+            #    
+            elif order.side == 'ASK' and order.price <= self.best_bid:
+                    executed_price = order.price
+                    execute = 'BOOK'
+            #
             elif order.side == 'BID' and order.price >= self.trade_price['ASK']:
                     executed_price = order.price
                     execute = 'TRADE'    
+            #
             elif order.side == 'ASK' and order.price <= self.trade_price['BID']:
                     executed_price = order.price
                     execute = 'TRADE'
