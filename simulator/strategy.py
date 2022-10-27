@@ -1,8 +1,9 @@
-import pandas as pd
-import numpy as np
-from typing import List, Union, Tuple, Optional
+from typing import List, Optional, Tuple, Union, Dict
 
-from simulator import Sim, update_best_positions, OwnTrade, MdUpdate, Order
+import numpy as np
+import pandas as pd
+
+from simulator import MdUpdate, Order, OwnTrade, Sim, update_best_positions
 
 
 class BestPosStrategy:
@@ -22,7 +23,7 @@ class BestPosStrategy:
         self.hold_time = hold_time
 
 
-    def run(self, sim: "Sim") ->\
+    def run(self, sim: Sim ) ->\
         Tuple[ List[OwnTrade], List[MdUpdate], List[ Union[OwnTrade, MdUpdate] ], List[Order] ]:
         '''
             This function runs simulation
@@ -32,14 +33,15 @@ class BestPosStrategy:
             Returns:
                 trades_list(List[OwnTrade]): list of our executed trades
                 md_list(List[MdUpdate]): list of market data received by strategy
-                updates_list( List[ Union[OwnTrade, MdUpdate] ] ): list of all updates received by strategy(market data and information about executed trades)
+                updates_list( List[ Union[OwnTrade, MdUpdate] ] ): list of all updates 
+                received by strategy(market data and information about executed trades)
                 all_orders(List[Orted]): list of all placed orders
         '''
 
         #market data list
-        md_list = []
+        md_list:List[MdUpdate] = []
         #executed trades list
-        trades_list = []
+        trades_list:List[OwnTrade] = []
         #all updates list
         updates_list = []
         #current best positions
@@ -49,7 +51,7 @@ class BestPosStrategy:
         #last order timestamp
         prev_time = -np.inf
         #orders that have not been executed/canceled yet
-        ongoing_orders = {}
+        ongoing_orders: Dict[int, Order] = {}
         all_orders = []
         while True:
             #get update from simulator
@@ -76,8 +78,6 @@ class BestPosStrategy:
                 #place order
                 bid_order = sim.place_order( receive_ts, 0.001, 'BID', best_bid )
                 ask_order = sim.place_order( receive_ts, 0.001, 'ASK', best_ask )
-                bid_order.timestamp = receive_ts
-                ask_order.timestamp = receive_ts
                 ongoing_orders[bid_order.order_id] = bid_order
                 ongoing_orders[ask_order.order_id] = ask_order
 
@@ -85,7 +85,7 @@ class BestPosStrategy:
             
             to_cancel = []
             for ID, order in ongoing_orders.items():
-                if order.timestamp < receive_ts - self.hold_time:
+                if order.place_ts < receive_ts - self.hold_time:
                     sim.cancel_order( receive_ts, ID )
                     to_cancel.append(ID)
             for ID in to_cancel:

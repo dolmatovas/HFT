@@ -1,8 +1,9 @@
-import numpy as np
-import pandas as pd
 from typing import List, Union
 
-from simulator import update_best_positions, MdUpdate, OwnTrade
+import numpy as np
+import pandas as pd
+
+from simulator import MdUpdate, OwnTrade, update_best_positions
 
 
 def get_pnl(updates_list:List[ Union[MdUpdate, OwnTrade] ]) -> pd.DataFrame:

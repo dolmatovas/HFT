@@ -1,8 +1,8 @@
-import pandas as pd
-
 from typing import List
 
-from simulator import AnonTrade, OrderbookSnapshotUpdate, MdUpdate
+import pandas as pd
+
+from simulator import AnonTrade, MdUpdate, OrderbookSnapshotUpdate
 
 
 def load_trades(path, nrows=10000) -> List[AnonTrade]:
