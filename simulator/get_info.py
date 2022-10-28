@@ -13,18 +13,16 @@ def get_pnl(updates_list:List[ Union[MdUpdate, OwnTrade] ]) -> pd.DataFrame:
 
     #current position in btc and usd
     btc_pos, usd_pos = 0.0, 0.0
-    #current portfoilo value
-    worth = 0.0
     
-    worth_list = []
-    btc_pos_list = []
-    usd_pos_list = []
-    mid_price_list = []
+    N = len(updates_list)
+    btc_pos_arr = np.zeros((N, ))
+    usd_pos_arr = np.zeros((N, ))
+    mid_price_arr = np.zeros((N, ))
     #current best_bid and best_ask
-    best_bid = -np.inf
-    best_ask = np.inf
+    best_bid:float = -np.inf
+    best_ask:float = np.inf
 
-    for update in updates_list:
+    for i, update in enumerate(updates_list):
         
         if isinstance(update, MdUpdate):
             best_bid, best_ask = update_best_positions(best_bid, best_ask, update)
@@ -42,15 +40,17 @@ def get_pnl(updates_list:List[ Union[MdUpdate, OwnTrade] ]) -> pd.DataFrame:
                 btc_pos -= trade.size
                 usd_pos += trade.price * trade.size
         #current portfolio value
-        worth = usd_pos + mid_price * btc_pos
-        worth_list.append(worth)
-        btc_pos_list.append(btc_pos)
-        usd_pos_list.append(usd_pos)
-        mid_price_list.append(mid_price)
+        
+        btc_pos_arr[i] = btc_pos
+        usd_pos_arr[i] = usd_pos
+        mid_price_arr[i] = mid_price
+    
+    worth_arr = btc_pos_arr * mid_price_arr + usd_pos_arr
     receive_ts = [update.receive_ts for update in updates_list]
     exchange_ts = [update.exchange_ts for update in updates_list]
-    df = pd.DataFrame({"exchange_ts": exchange_ts, "receive_ts":receive_ts, "total":worth_list, "BTC":btc_pos_list, 
-                       "USD":usd_pos_list, "mid_price":mid_price_list})
+    
+    df = pd.DataFrame({"exchange_ts": exchange_ts, "receive_ts":receive_ts, "total":worth_arr, "BTC":btc_pos_arr, 
+                       "USD":usd_pos_arr, "mid_price":mid_price_arr})
     df = df.groupby('receive_ts').agg(lambda x: x.iloc[-1]).reset_index()    
     return df
 
