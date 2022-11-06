@@ -62,6 +62,35 @@ class MdUpdate:  # Data of a tick
     trade: Optional[AnonTrade] = None
 
 
+
+class PriorQueue:
+    def __init__(self, default_key=np.inf, default_val = None):
+        self._queue = SortedDict()
+        self._min_key = np.inf
+
+    
+    def push(self, key, val):
+        if key not in self._queue:
+            self._queue[key] = []
+        self._queue[key].append(val)
+        self._min_key = min(self._min_key, key)
+
+    
+    def pop(self):
+        if len(self._queue) == 0:
+            return np.inf, None
+        res = self._queue.popitem(0)
+        self._min_key = np.inf
+        if len(self._queue):
+            self._min_key = self._queue.peekitem(0)[0]
+        return res
+    
+
+    def min_key(self):
+        return self._min_key
+
+
+
 def update_best_positions(best_bid:float, best_ask:float, md:MdUpdate) -> Tuple[float, float]:
     if not md.orderbook is None:
         best_bid = md.orderbook.bids[0][0]
@@ -82,7 +111,7 @@ class Sim:
         #action queue
         self.actions_queue:Deque[ Union[Order, CancelOrder] ] = deque()
         #SordetDict: receive_ts -> [updates]
-        self.strategy_updates_queue = SortedDict()
+        self.strategy_updates_queue = PriorQueue()
         #map : order_id -> Order
         self.ready_to_execute_orders:Dict[int, Order] = {}
         
@@ -114,7 +143,7 @@ class Sim:
     
     
     def get_strategy_updates_queue_event_time(self) -> np.float:
-        return np.inf if len(self.strategy_updates_queue) == 0 else self.strategy_updates_queue.keys()[0]
+        return self.strategy_updates_queue.min_key()
     
     
     def get_order_id(self) -> int:
@@ -156,9 +185,7 @@ class Sim:
         self.update_last_trade()
 
         #add md to strategy_updates_queue
-        if not md.receive_ts in self.strategy_updates_queue.keys():
-            self.strategy_updates_queue[md.receive_ts] = []
-        self.strategy_updates_queue[md.receive_ts].append(md)
+        self.strategy_updates_queue.push(md.receive_ts, md)
         
     
     def update_action(self, action:Union[Order, CancelOrder]) -> None:
@@ -197,23 +224,20 @@ class Sim:
             if strategy_updates_queue_et < min(md_queue_et, actions_queue_et):
                 break
 
-
+            call_execute = md_queue_et <= actions_queue_et
             if md_queue_et <= actions_queue_et:
                 self.update_md( self.md_queue.popleft() )
             if actions_queue_et <= md_queue_et:
                 self.update_action( self.actions_queue.popleft() )
-
-            #execute last order aggressively
-            self.execute_last_order()
+                #execute last order aggressively
+                self.execute_last_order()
+            
             #execute orders with current orderbook
-            self.execute_orders()
+            if call_execute:
+                self.execute_orders()
             #delete last trade
             self.delete_last_trade()
-        #end of simulation
-        if len(self.strategy_updates_queue) == 0:
-            return np.inf, None
-        key = self.strategy_updates_queue.keys()[0]
-        res = self.strategy_updates_queue.pop(key)
+        key, res = self.strategy_updates_queue.pop()
         return key, res
 
 
@@ -246,10 +270,7 @@ class Sim:
                 self.last_order.size, 
                 executed_price, execute)
             #add order to strategy update queue
-            #there is no defaultsorteddict so I have to do this
-            if not executed_order.receive_ts in self.strategy_updates_queue:
-                self.strategy_updates_queue[ executed_order.receive_ts ] = []
-            self.strategy_updates_queue[ executed_order.receive_ts ].append(executed_order)
+            self.strategy_updates_queue.push(executed_order.receive_ts, executed_order)
         else:
             self.ready_to_execute_orders[self.last_order.order_id] = self.last_order
 
@@ -290,11 +311,8 @@ class Sim:
         
                 executed_orders_id.append(order_id)
 
-                #added order to strategy update queue
-                #there is no defaultsorteddict so i have to do this
-                if not executed_order.receive_ts in self.strategy_updates_queue:
-                    self.strategy_updates_queue[ executed_order.receive_ts ] = []
-                self.strategy_updates_queue[ executed_order.receive_ts ].append(executed_order)
+                #add order to strategy update queue
+                self.strategy_updates_queue.push(executed_order.receive_ts, executed_order)
         
         #deleting executed orders
         for k in executed_orders_id:
