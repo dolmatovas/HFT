@@ -11,7 +11,7 @@ class BestPosStrategy:
         This strategy places ask and bid order every `delay` nanoseconds.
         If the order has not been executed within `hold_time` nanoseconds, it is canceled.
     '''
-    def __init__(self, delay: float, hold_time:Optional[float] = None) -> None:
+    def __init__(self, delay: float, hold_time:Optional[float], min_pos = 0.001) -> None:
         '''
             Args:
                 delay(float): delay between orders in nanoseconds
@@ -21,6 +21,8 @@ class BestPosStrategy:
         if hold_time is None:
             hold_time = max( delay * 5, pd.Timedelta(10, 's').delta )
         self.hold_time = hold_time
+
+        self.min_pos = min_pos
 
 
     def run(self, sim: Sim ) ->\
@@ -76,8 +78,8 @@ class BestPosStrategy:
             if receive_ts - prev_time >= self.delay:
                 prev_time = receive_ts
                 #place order
-                bid_order = sim.place_order( receive_ts, 0.001, 'BID', best_bid )
-                ask_order = sim.place_order( receive_ts, 0.001, 'ASK', best_ask )
+                bid_order = sim.place_order( receive_ts, self.min_pos, 'BID', best_bid )
+                ask_order = sim.place_order( receive_ts, self.min_pos, 'ASK', best_ask )
                 ongoing_orders[bid_order.order_id] = bid_order
                 ongoing_orders[ask_order.order_id] = ask_order
 

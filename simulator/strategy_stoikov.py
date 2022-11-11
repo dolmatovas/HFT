@@ -12,7 +12,7 @@ class StoikovStrategy:
         This strategy places ask and bid order every `delay` nanoseconds.
         If the order has not been executed within `hold_time` nanoseconds, it is canceled.
     '''
-    def __init__(self, delay: float, gamma: float, k:float, T:float) -> None:
+    def __init__(self, delay: float, min_pos:float, gamma: float, k:float, T:float) -> None:
         '''
             Args:
                 delay(float): delay between orders in nanoseconds
@@ -23,7 +23,8 @@ class StoikovStrategy:
         '''
         self.delay = delay
         
-        
+        self.min_pos = min_pos
+
         #expiration time in nanoseconds
         self.T = T
         self.gamma = gamma
@@ -136,8 +137,9 @@ class StoikovStrategy:
                 receive_ts_queue.popleft()
                 mid_price_queue.popleft()
             
+            inventory = btc_pos / self.min_pos
             theta = np.std(mid_price_queue) ** 2
-            reserv_price = mid_price - btc_pos * self.gamma * theta
+            reserv_price = mid_price - inventory * self.gamma * theta
             spread = self.gamma * theta + 2 / self.gamma * np.log( 1 + self.gamma / self.k )
             bid_price = reserv_price - 0.5 * spread
             ask_price = reserv_price + 0.5 * spread
@@ -154,8 +156,8 @@ class StoikovStrategy:
                 prev_time = receive_ts
                 
                 #place order
-                bid_order = sim.place_order( receive_ts, 0.001, 'BID', bid_price )
-                ask_order = sim.place_order( receive_ts, 0.001, 'ASK', ask_price )
+                bid_order = sim.place_order( receive_ts, self.min_pos, 'BID', bid_price )
+                ask_order = sim.place_order( receive_ts, self.min_pos, 'ASK', ask_price )
                 ongoing_orders[bid_order.order_id] = bid_order
                 ongoing_orders[ask_order.order_id] = ask_order
 
