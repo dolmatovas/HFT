@@ -95,6 +95,13 @@ def update_best_positions(best_bid:float, best_ask:float, md:MdUpdate) -> Tuple[
     if not md.orderbook is None:
         best_bid = md.orderbook.bids[0][0]
         best_ask = md.orderbook.asks[0][0]
+    elif not md.trade is None:
+        if md.trade.side == 'BID':
+            best_ask = md.trade.price
+        elif md.trade.side == 'ASK':
+            best_bid = md.trade.price
+        else:
+            assert False, "WRONG TRADE SIDE"
     return best_bid, best_ask
 
 
@@ -157,13 +164,6 @@ class Sim:
         self.trade_id += 1
         return res
     
-
-    def update_best_pos(self) -> None:
-        assert not self.md is None, "no current market data!" 
-        if not self.md.orderbook is None:
-            self.best_bid = self.md.orderbook.bids[0][0]
-            self.best_ask = self.md.orderbook.asks[0][0]
-    
     
     def update_last_trade(self) -> None:
         assert not self.md is None, "no current market data!"
@@ -180,7 +180,7 @@ class Sim:
         #current orderbook
         self.md = md 
         #update position
-        self.update_best_pos()
+        self.best_bid, self.best_ask = update_best_positions(self.best_bid, self.best_ask, md)
         #update info about last trade
         self.update_last_trade()
 
