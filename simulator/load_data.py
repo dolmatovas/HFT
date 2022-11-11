@@ -5,18 +5,34 @@ import pandas as pd
 from simulator import AnonTrade, MdUpdate, OrderbookSnapshotUpdate
 
 
-def load_trades(path, nrows=10000) -> List[AnonTrade]:
+def load_before_time(path, T):
+    chunksize = 10 ** 5
+    chunks = []
+    t0 = None
+    for chunk in pd.read_csv(path, chunksize=chunksize):
+        if t0 is None:
+            t0 = chunk['receive_ts'].iloc[0]
+        chunks.append(chunk)
+        if chunk['receive_ts'].iloc[-1] - t0 >= T:
+            break
+    df = pd.concat(chunks)
+    mask = df['receive_ts'] - df['receive_ts'].iloc[0] < T
+    df = df.loc[mask]
+
+    return df
+
+def load_trades(path:str, T:int) -> List[AnonTrade]:
     '''
         This function downloads trades data
 
         Args:
             path(str): path to file
-            nrows(int): number of rows to read
+            T(int): max timestamp from the first one in nanoseconds
 
         Return:
             trades(List[AnonTrade]): list of trades 
     '''
-    trades = pd.read_csv(path + 'trades.csv', nrows=nrows)
+    trades = load_before_time(path + 'trades.csv', T)
     
     #переставляю колонки, чтобы удобнее подавать их в конструктор AnonTrade
     trades = trades[ ['exchange_ts', 'receive_ts', 'aggro_side', 'size', 'price' ] ].sort_values(["exchange_ts", 'receive_ts'])
@@ -26,18 +42,18 @@ def load_trades(path, nrows=10000) -> List[AnonTrade]:
     return trades
 
 
-def load_books(path, nrows=10000) -> List[OrderbookSnapshotUpdate]:
+def load_books(path:str, T:int) -> List[OrderbookSnapshotUpdate]:
     '''
         This function downloads orderbook market data
 
         Args:
             path(str): path to file
-            nrows(int): number of rows to read
+            T(int): max timestamp from the first one in nanoseconds
 
         Return:
             books(List[OrderbookSnapshotUpdate]): list of orderbooks snapshots 
     '''
-    lobs   = pd.read_csv(path + 'lobs.csv', nrows=nrows)
+    lobs   = load_before_time(path + 'lobs.csv', T)
     
     #rename columns
     names = lobs.columns.values
@@ -75,10 +91,10 @@ def merge_books_and_trades(books : List[OrderbookSnapshotUpdate], trades: List[A
     return md
 
 
-def load_md_from_file(path: str, nrows=10000) -> List[MdUpdate]:
+def load_md_from_file(path: str, T:int) -> List[MdUpdate]:
     '''
         This function downloads orderbooks ans trades and merges them
     '''
-    books  = load_books(path, nrows)
-    trades = load_trades(path, nrows)
+    books  = load_books(path, T)
+    trades = load_trades(path, T)
     return merge_books_and_trades(books, trades)
