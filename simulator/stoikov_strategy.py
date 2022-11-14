@@ -23,6 +23,11 @@ class StoikovStrategy:
                 gamma(float): gamma
                 k(float): k
                 T(float): time window for variance calculation
+
+                theta_policy(str): if 'std', we calculate theta as standard deviation of mid price over the last T nanoseconds
+                                   if 'spread', we calculate theta as mean bid-ask spread over the last T nanoseconds
+                res_policy(str): strategy for calculating reservation price
+                                can be either mid_price or stoikov
         '''
         self.delay = delay
         
@@ -42,6 +47,9 @@ class StoikovStrategy:
 
 
     def update_md(self, md):
+        '''
+            updates best positions
+        '''
         self.best_bid, self.best_ask = update_best_positions(self.best_bid, self.best_ask, md)
         return self.best_bid, self.best_ask
 
@@ -92,6 +100,7 @@ class StoikovStrategy:
         else:
             assert False, 'Wrong reservation price policy'
         
+        #k = 4.0 / np.mean( np.asarray( self.queues['ask_price'] ) - np.asarray( self.queues['bid_price'] ))
         spread = self.gamma * theta + 2 / self.gamma * np.log( 1 + self.gamma / self.k )
         bid_price = res_price - 0.5 * spread
         ask_price = res_price + 0.5 * spread
@@ -108,19 +117,12 @@ class StoikovStrategy:
         return theta
 
 
-    def run(self, sim: Sim ) ->\
-        Tuple[ List[OwnTrade], List[MdUpdate], List[ Union[OwnTrade, MdUpdate] ], List[Order] ]:
+    def run(self, sim: Sim ):
         '''
             This function runs simulation
 
             Args:
                 sim(Sim): simulator
-            Returns:
-                trades_list(List[OwnTrade]): list of our executed trades
-                md_list(List[MdUpdate]): list of market data received by strategy
-                updates_list( List[ Union[OwnTrade, MdUpdate] ] ): list of all updates 
-                received by strategy(market data and information about executed trades)
-                all_orders(List[Orted]): list of all placed orders
         '''
 
         self.receive_ts = 0.0
