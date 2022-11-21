@@ -161,3 +161,13 @@ class FutureStrategy(BaseStrategy):
         self.bid_price = self.future_mid_price - 0.5 * spread
         self.ask_price = self.future_mid_price + 0.5 * spread
         return
+
+
+    def _calculate_order_position(self, inventory):
+        super()._calculate_order_position(inventory)
+        if self.future_mid_price > self.mid_price:
+            self.bid_pos += self.min_pos
+            self.ask_pos -= self.min_pos
+        elif self.future_mid_price < self.mid_price:
+            self.bid_pos -= self.min_pos
+            self.ask_pos += self.min_pos
