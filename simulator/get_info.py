@@ -6,7 +6,7 @@ import pandas as pd
 from simulator import MdUpdate, OwnTrade, update_best_positions
 
 
-def get_pnl(updates_list:List[ Union[MdUpdate, OwnTrade] ]) -> pd.DataFrame:
+def get_pnl(updates_list:List[ Union[MdUpdate, OwnTrade] ], cost=-0.00001) -> pd.DataFrame:
     '''
         This function calculates PnL from list of updates
     '''
@@ -39,6 +39,7 @@ def get_pnl(updates_list:List[ Union[MdUpdate, OwnTrade] ]) -> pd.DataFrame:
             elif trade.side == 'ASK':
                 btc_pos -= trade.size
                 usd_pos += trade.price * trade.size
+            usd_pos -= cost * trade.price * trade.size
         #current portfolio value
         
         btc_pos_arr[i] = btc_pos
