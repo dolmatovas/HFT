@@ -122,21 +122,29 @@ class FutureStrategy(BaseStrategy):
         md = sorted(md, key=lambda x:x.receive_ts)
         self.md_queue = deque( md )
 
-        self.future_md = self.md_queue.popleft()
+        self.future_md = None
+        self._update_future_md()
+
+
+    def _update_future_md(self):
+        if self.future_md is None:
+            self.future_md = self.md_queue.popleft()
+            self.receive_ts = self.future_md.receive_ts
+            self.future_bid_price, self.future_ask_price = -np.inf, np.inf
+        ts = self.receive_ts
+        while len(self.md_queue) and (ts - self.receive_ts) < pd.Timedelta(1, 's').delta:
+            self.future_md = self.md_queue.popleft()
+            ts = self.future_md.receive_ts
         self.future_bid_price, self.future_ask_price = \
-            update_best_positions(-np.inf, np.inf, self.future_md)
+            update_best_positions(self.future_bid_price, self.future_ask_price, self.future_md)
         self.future_mid_price = 0.5 * (self.future_bid_price + self.future_ask_price)
         self.future_mid_price = get_mid_price(self.future_mid_price, self.future_md)
 
 
     def _update_md(self, md):
         super()._update_md(md)
-        if len(self.md_queue):
-            self.future_md = self.md_queue.popleft()
-        self.future_bid_price, self.future_ask_price = \
-            update_best_positions(-np.inf, np.inf, self.future_md)
-        self.future_mid_price = 0.5 * (self.future_bid_price + self.future_ask_price)
-        self.future_mid_price = get_mid_price(self.future_mid_price, self.future_md)
+        self._update_future_md()
+
 
 
     def _update_lists(self):

@@ -15,6 +15,15 @@ class Order:  # Our own placed order
     size: float
     price: float
 
+
+@dataclass
+class MarketOrder:  # Our own placed order
+    place_ts : float # ts when we place the order
+    exchange_ts : float # ts when exchange(simulator) get the order    
+    order_id: int
+    side: str
+    size: float
+
         
 @dataclass
 class CancelOrder:

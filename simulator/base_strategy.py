@@ -107,7 +107,6 @@ class BaseStrategy:
         if self._inventory_policy == 'neutral':
             pass
         elif self._inventory_policy == 'aggressive':
-            fct = 3.0
             self.ask_pos = self.min_pos * (1 + (inventory > self.q0) )
             self.bid_pos = self.min_pos * (1 + (inventory < -self.q0) )
         elif self._inventory_policy == 'linear':

@@ -5,7 +5,7 @@ from typing import List, Optional, Tuple, Union, Deque, Dict
 import numpy as np
 from sortedcontainers import SortedDict
 
-from utils import Order, CancelOrder, AnonTrade, OwnTrade, OrderbookSnapshotUpdate, \
+from utils import Order, CancelOrder, AnonTrade, OwnTrade, OrderbookSnapshotUpdate, MarketOrder, \
                   MdUpdate, update_best_positions, get_mid_price, PriorQueue
 
 
@@ -20,7 +20,7 @@ class Sim:
         #transform md to queue
         self.md_queue = deque( market_data )
         #action queue
-        self.actions_queue:Deque[ Union[Order, CancelOrder] ] = deque()
+        self.actions_queue:Deque[ Union[Order, MarketOrder, CancelOrder] ] = deque()
         #SordetDict: receive_ts -> [updates]
         self.strategy_updates_queue = PriorQueue()
         #map : order_id -> Order
@@ -102,6 +102,14 @@ class Sim:
             #cancel order
             if action.id_to_delete in self.ready_to_execute_orders:
                 self.ready_to_execute_orders.pop(action.id_to_delete)
+        elif isinstance(action, MarketOrder):
+            price = self.best_bid if action.side == 'ASK' else self.best_ask
+            self.last_order = Order( action.place_ts, 
+                                     action.exchange_ts, 
+                                     action.order_id, 
+                                     action.side, 
+                                     action.size, 
+                                     price)
         else:
             assert False, "Wrong action type!"
 
@@ -228,6 +236,12 @@ class Sim:
         order = Order(ts, ts + self.latency, self.get_order_id(), side, size, price)
         self.actions_queue.append(order)
         return order
+
+
+    def place_market_order(self, ts, size, side) -> None:
+        market_order = MarketOrder(ts, ts + self.latency, self.get_order_id(), side, size)
+        pass
+    
 
     
     def cancel_order(self, ts:float, id_to_delete:int) -> CancelOrder:
