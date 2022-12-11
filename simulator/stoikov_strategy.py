@@ -59,7 +59,9 @@ class StoikovStrategy(BaseStrategy):
         if self._theta_policy == 'std':
             theta = np.std( self.queues['mid_price'] )
         elif self._theta_policy == 'spread':
-            theta = np.mean( np.asarray( self.queues['best_ask'] ) - np.asarray( self.queues['best_bid'] ))
+            theta = np.mean( 
+                np.abs(np.asarray( self.queues['best_ask'] ) - np.asarray( self.queues['best_bid'] ))
+                )
         else:
             assert False, "Unreachable"
         return theta

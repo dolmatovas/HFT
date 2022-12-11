@@ -76,6 +76,9 @@ class BaseStrategy:
         self.lists['ask_price'].append(self.ask_price)
         self.lists['bid_price'].append(self.bid_price)
 
+        self.lists['receive_ts'].append(self.receive_ts)
+        
+
 
     def _warm_up(self, sim:Sim):
         go = True
@@ -99,6 +102,7 @@ class BaseStrategy:
                 self._update_md(md)
                 self._update_lists()
                 self._update_queues()            
+
 
     def _calculate_order_position(self, inventory):
         self.ask_pos = self.min_pos
@@ -212,10 +216,12 @@ class BaseStrategy:
                 ongoing_orders.pop(ID)
 
         res = dict(self.lists)
-        array_keys = ['mid_price', 'best_ask', 'best_bid', 'res_price', 'ask_price', 'bid_price']
+        
+        
+        #array_keys = ['mid_price', 'best_ask', 'best_bid', 'res_price', 'ask_price', 'bid_price']
 
-        for k in array_keys:
-            res[k] = np.asarray(self.lists[k])
+        #for k in array_keys:
+        #    res[k] = np.asarray(self.lists[k])
         
         res['trade'] = self.lists['trade']
         res['md'] = self.lists['md']

@@ -18,6 +18,7 @@ def get_pnl(updates_list:List[ Union[MdUpdate, OwnTrade] ], cost=-0.00001) -> pd
     btc_pos_arr = np.zeros((N, ))
     usd_pos_arr = np.zeros((N, ))
     mid_price_arr = np.zeros((N, ))
+
     #current best_bid and best_ask
     best_bid:float = -np.inf
     best_ask:float = np.inf
