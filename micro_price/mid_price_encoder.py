@@ -3,15 +3,24 @@ from collections import Counter
 
 
 class MidPriceEncoder:
-    def __init__(self):
-        self.tick_size = 0.01
+    def __init__(self, n_bins=200, tick_size=0.01):
+        """
+            Encode mid price
+
+            n_bins: desired number of bins
+            tick_size: discretization step
+        """
+        self.tick_size  = tick_size
         self.thresholds = None
         self.codes      = None
         
-        self.n_bins = 200
+        self.n_bins = n_bins
 
         
-    def predict(self, dm):
+    def predict(self, dm:np.ndarray) -> np.ndarray:
+        """
+            transform given dm
+        """
         #previous threshold
         prv = 0
         dm_int = (np.abs(dm) / self.tick_size).astype(int)
@@ -24,7 +33,11 @@ class MidPriceEncoder:
         return dm_int 
     
     
-    def fit(self, dm):
+    def fit(self, dm:np.ndarray) -> None:
+        """
+            fit encoder, calculate thresholds
+        """
+
         #to int
         dm_int = np.round_((np.abs(dm) / self.tick_size))
         #ignore zeros
@@ -33,22 +46,30 @@ class MidPriceEncoder:
         self.thresholds = []
         self.codes = []
         
-        counter = sorted(Counter(dm_int).items())   
+        counter = sorted(Counter(dm_int).items())
+
+        total = len(dm_int)
+
+        n_bins = 0
         dcount = len(dm_int) / (self.n_bins)
-        
         cnts = 0
         vals = []
         for val, cnt in counter:
-            
+            if self.n_bins == n_bins:
+                break
             cnts += cnt
             vals.append(val)
-            
-            if cnts >= dcount:
+            if cnts > dcount:
                 self.thresholds.append(val)
                 self.codes.append(int(np.median(vals)))
                 
+                n_bins += 1
+                total -= cnts
+                dcount = total / (self.n_bins - n_bins)
+                
                 cnts = 0
                 vals = []
+                
         self.thresholds[-1] = np.inf
         self.dm_set = sorted( [-code * self.tick_size for code in self.codes] + [0]\
                             + [ code * self.tick_size for code in self.codes] ) 
@@ -56,7 +77,10 @@ class MidPriceEncoder:
 
 
 
-class DummyMidPriceEncoder:    
+class DummyMidPriceEncoder:
+    """
+        Dummy Mid Price encoder, just do nothing
+    """    
     def predict(self, dm):
         return dm
     
