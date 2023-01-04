@@ -13,8 +13,9 @@ class BaseSpreadEncoder:
         assert False, "not implemented yet"
 
         
-    def predict(self, spread):
+    def predict(self, spread_):
         #clip to be sure spread >= tick_size
+        spread = spread_.copy()
         spread = np.clip(spread, self.tick_size, np.inf)
         #to int
         spread = (spread / self.tick_size).astype(int)
@@ -37,7 +38,8 @@ class UniformSpreadEncoder(BaseSpreadEncoder):
         self.n_bins2 = n_bins2
     
     
-    def fit(self, spread):
+    def fit(self, spread_):
+        spread = spread_.copy()
         #clip to be sure spread >= tick_size
         spread = np.clip(spread, self.tick_size, np.inf)
         #to int
@@ -93,7 +95,8 @@ class SpreadEncoder(BaseSpreadEncoder):
         self.step_inc     = step_inc
     
     
-    def fit(self, spread):
+    def fit(self, spread_):
+        spread = spread_.copy()
         #clip to be sure spread >= tick_size
         spread = np.clip(spread, self.tick_size, np.inf)
         #to int

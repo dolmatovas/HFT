@@ -17,10 +17,11 @@ class MidPriceEncoder:
         self.n_bins = n_bins
 
         
-    def predict(self, dm:np.ndarray) -> np.ndarray:
+    def predict(self, dm_:np.ndarray) -> np.ndarray:
         """
             transform given dm
         """
+        dm = dm_.copy()
         #previous threshold
         prv = 0
         dm_int = (np.abs(dm) / self.tick_size).astype(int)
@@ -33,11 +34,11 @@ class MidPriceEncoder:
         return dm_int 
     
     
-    def fit(self, dm:np.ndarray) -> None:
+    def fit(self, dm_:np.ndarray) -> None:
         """
             fit encoder, calculate thresholds
         """
-
+        dm = dm_.copy()
         #to int
         dm_int = np.round_((np.abs(dm) / self.tick_size))
         #ignore zeros

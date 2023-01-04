@@ -120,5 +120,31 @@ class DummyMicroPrice:
                 
     def predict(self, I:np.ndarray, S:np.ndarray):
         I, S = self.encoder.predict(I, S)
-        predict = np.asarray([ self.G[s][i] for s, i in zip(S, I) ])
-        return predict
+        pred = np.asarray([ self.G[s][i] for s, i in zip(S, I) ])
+        return pred
+
+
+    def apply(self, I, S, func):
+        """
+            return Dict[ int, np.ndarray ] G
+            where G.keys() are unique values of spread, e.g. 1,2,3,5,...
+            and G[s] is array of length n_imbalance
+        """
+        I, S = self.encoder.predict(I, S)
+        G = {}
+        for s in self.dms.keys():
+            G[s] = np.zeros((self.encoder.n_imb, ))
+            for i in range(self.encoder.n_imb):
+                G[s][i] = func(self.dms[s][i])
+        return G
+
+    
+    def predict_apply(self, I:np.ndarray, S:np.ndarray, func):
+        I, S = self.encoder.predict(I, S)
+        G = {}
+        for s in self.dms.keys():
+            G[s] = np.zeros((self.encoder.n_imb, ))
+            for i in range(self.encoder.n_imb):
+                G[s][i] = func(self.dms[s][i])
+        pred = np.asarray( [ G[s][i] for s, i in zip(S, I) ] )
+        return pred
