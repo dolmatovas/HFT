@@ -124,13 +124,12 @@ class DummyMicroPrice:
         return pred
 
 
-    def apply(self, I, S, func):
+    def apply(self, func):
         """
             return Dict[ int, np.ndarray ] G
             where G.keys() are unique values of spread, e.g. 1,2,3,5,...
             and G[s] is array of length n_imbalance
         """
-        I, S = self.encoder.predict(I, S)
         G = {}
         for s in self.dms.keys():
             G[s] = np.zeros((self.encoder.n_imb, ))
