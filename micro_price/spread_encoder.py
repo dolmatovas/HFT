@@ -1,4 +1,5 @@
 import numpy as np
+from collections import Counter
 
 class BaseSpreadEncoder:
     def __init__(self, tick_size):
@@ -54,19 +55,28 @@ class UniformSpreadEncoder(BaseSpreadEncoder):
         
         current = sum( cont for _, cont in counter[:self.n_bins1]  )
         
-        dcount = (total - current) / (self.n_bins2)
+        total -= current
+
+        dcount = total / (self.n_bins2)
+
+        n_bins2 = 0
         
         cnts = 0
         vals = []
         for val, cnt in counter[self.n_bins1:]:
-            
+            if n_bins2 == self.n_bins2:
+                break
             cnts += cnt
             vals.append(val)
             
-            if cnts >= dcount:
+            if cnts > dcount:
                 self.thresholds.append(val)
                 self.codes.append(int(np.median(vals)))
                 
+                n_bins2 += 1
+                total -= cnts
+                dcount = total / (self.n_bins2 - n_bins2)
+
                 cnts = 0
                 vals = []
         self.thresholds[-1] = np.inf
